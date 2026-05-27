@@ -132,9 +132,9 @@ To enable a mod on the server, specify the `TMOD_ENABLEDMODS` environment variab
 ```
 ---
 ## Mod Considerations
-There is no need to repeatedly download mods each time you start the container. For this reason, once you have downloaded the mods you want to include on your server, it is safe to **remove** the `TMOD_AUTODOWNLOAD` environment variable, whilst maintaining the `TMOD_ENABLEDMODS` variable to enable them during runtime. Doing so will greatly improve the startup time of the Docker container.
+The container records Steam Workshop update timestamps in `/data/steamMods/tmodloader-workshop-updates.state`. When `/data` is mapped to a host directory, future starts will only download mods which are missing or have a newer Steam Workshop update.
 
-If mods receive updates you wish to download, include the Mod ID again in the `TMOD_AUTODOWNLOAD` variable to download the update. The next time tModLoader starts, the mod will be updated.
+If mods receive updates, keep the Mod ID in `TMOD_AUTODOWNLOAD` or keep using `TMOD_MOD_COLLECTION`. The next time tModLoader starts, only the updated mods will be downloaded.
 
 Additionally, you may at any time remove a mod from the `TMOD_ENABLEDMODS` variable to disable it, though this may cause problems with a world which has modded content.
 

@@ -48,9 +48,122 @@ function fetch_collection_details () {
   return 1
 }
 
+# Fetches published file details from Steam's public Workshop item API.
+function fetch_published_file_details () {
+  local itemCount
+  local postData
+  local url
+  itemCount=$(echo "$1" | tr ',' '\n' | sed '/^$/d' | wc -l | tr -d ' ')
+  postData="itemcount=$itemCount"
+  url="https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+
+  local index
+  index=0
+  echo "$1" | tr ',' '\n' | sed '/^$/d' | while read modId
+  do
+    echo "publishedfileids[$index]=$modId"
+    index=$((index + 1))
+  done | while read field
+  do
+    postData="$postData&$field"
+    echo "$postData"
+  done | tail -n 1 | while read builtPostData
+  do
+    if command -v wget >/dev/null 2>&1 ; then
+      wget -qO- --post-data="$builtPostData" "$url"
+      return
+    fi
+
+    if command -v curl >/dev/null 2>&1 ; then
+      curl -s -X POST "$url" -d "$builtPostData"
+      return
+    fi
+
+    echo -e "[!!] FATAL: wget or curl is required to check Workshop mod updates."
+    return 1
+  done
+}
+
+# Prints Workshop item IDs and their Steam update timestamps.
+function parse_published_file_update_times () {
+  if test "$#" -gt 0 ; then
+    echo "$1"
+  else
+    cat
+  fi | tr '{' '\n' \
+    | grep '"publishedfileid":"[0-9][0-9]*"' \
+    | grep '"time_updated":[0-9][0-9]*' \
+    | sed -n 's/.*"publishedfileid":"\([0-9][0-9]*\)".*"time_updated":\([0-9][0-9]*\).*/\1 \2/p'
+}
+
 # Converts a newline-separated list of Workshop IDs into a comma-separated list.
 function join_mod_ids () {
   tr '\n' ',' | sed 's/,$//'
+}
+
+# Counts non-empty IDs in a comma-separated Workshop ID list.
+function count_mod_ids () {
+  echo "$1" | tr ',' '\n' | sed '/^$/d' | wc -l | tr -d ' '
+}
+
+# Prints the recorded update timestamp for a Workshop item.
+function get_recorded_update_time () {
+  if test ! -f "$2" ; then
+    return
+  fi
+
+  awk -v modId="$1" '$1 == modId { print $2; exit }' "$2"
+}
+
+# Checks whether a Workshop item exists in the local Steam workshop cache.
+function mod_cache_exists () {
+  test -d "$2/$1"
+}
+
+# Returns a comma-separated list of missing or updated Workshop IDs.
+function filter_download_mod_ids () {
+  local modIds
+  local stateFile
+  local contentPath
+  local updateTimes
+  modIds="$1"
+  stateFile="$2"
+  contentPath="$3"
+
+  updateTimes=$(fetch_published_file_details "$modIds" | parse_published_file_update_times)
+  if test -z "$updateTimes" || test "$(echo "$updateTimes" | wc -l | tr -d ' ')" -lt "$(count_mod_ids "$modIds")" ; then
+    echo "$modIds"
+    return
+  fi
+
+  echo "$updateTimes" | while read modId updateTime
+  do
+    local recordedTime
+    recordedTime=$(get_recorded_update_time "$modId" "$stateFile")
+
+    if ! mod_cache_exists "$modId" "$contentPath" || test -z "$recordedTime" || test "$updateTime" -gt "$recordedTime" ; then
+      echo "$modId"
+    fi
+  done | join_mod_ids
+}
+
+# Persists current Steam update timestamps for Workshop IDs.
+function write_mod_update_state () {
+  local modIds
+  local stateFile
+  local temporaryStateFile
+  modIds="$1"
+  stateFile="$2"
+
+  mkdir -p "$(dirname "$stateFile")"
+  temporaryStateFile=$(mktemp)
+  fetch_published_file_details "$modIds" | parse_published_file_update_times > "$temporaryStateFile"
+
+  if test -s "$temporaryStateFile" ; then
+    mv "$temporaryStateFile" "$stateFile"
+  else
+    rm -f "$temporaryStateFile"
+  fi
 }
 
 # Applies TMOD_MOD_COLLECTION precedence by populating download and enable mod lists.
