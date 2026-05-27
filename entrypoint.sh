@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ./entrypoint-functions.sh
+
 pipe=/tmp/tmod.pipe
 
 echo -e "[SYSTEM] Shutdown Message set to: $TMOD_SHUTDOWN_MESSAGE"
@@ -19,6 +21,8 @@ if [[ "$TMOD_USECONFIGFILE" == "Yes" ]]; then
 else
   ./prepare-config.sh
 fi
+
+set_mod_sources
 
 # Trapped Shutdown, to cleanly shutdown
 function shutdown () {

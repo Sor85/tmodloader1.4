@@ -102,6 +102,14 @@ The server's Mod Configurations, Mod directory and World directories are stored 
 ## Downloading Mods
 Every Workshop item on Steam has a unique identifier which can be found by visiting the store page directly. For example, for the [Calamity Mod](https://steamcommunity.com/sharedfiles/filedetails/?id=2824688072), you can find the Workshop ID from the URL. In this case, **2824688072** is the ID. This Docker container is capable of downloading tModLoader mods directly from the Steam Workshop to streamline the setup process.
 
+If you want to download and enable every mod from a Steam Workshop collection, specify the `TMOD_MOD_COLLECTION` variable with the collection URL or collection ID.
+
+```bash
+-e TMOD_MOD_COLLECTION=https://steamcommunity.com/sharedfiles/filedetails/?id=3732144707
+```
+
+When `TMOD_MOD_COLLECTION` is set, `TMOD_AUTODOWNLOAD` and `TMOD_ENABLEDMODS` are ignored.
+
 In the environment variables passed to the container at runtime, specify the `TMOD_AUTODOWNLOAD` variable with a value of a comma separated list of the Mod IDs you wish to download.
 
 For example, to tell the container to download Calamity and the Calamity Mod Music, specify the following variable:
@@ -138,6 +146,7 @@ The following are all of the environment variables that are supported by the con
 | TMOD_SHUTDOWN_MESSAGE | Server is shutting down NOW! | The message which will be sent to the in-game chat upon container shutdown.
 | TMOD_AUTOSAVE_INTERVAL   | 10 | The autosave interval (in minutes) in which the World will be saved.
 | TMOD_AUTODOWNLOAD | N/A | A Comma Separated list of Workshop Mod IDs to download from Steam upon container startup.
+| TMOD_MOD_COLLECTION | N/A | A Steam Workshop collection URL or ID. When set, every mod in the collection is downloaded and enabled, and TMOD_AUTODOWNLOAD and TMOD_ENABLEDMODS are ignored.
 | TMOD_ENABLEDMODS | N/A | A Comma Separated list of Workshop Mod IDs to enable on the tModLoader server upon startup.
 | TMOD_USECONFIGFILE | No | If you wish to use a config file to specify server settings, set this variable to "Yes". Please note, this has been deprecated.
 | TMOD_MOTD | A tModLoader server powered by Docker! | The Message of the Day which prints in the chat upon joining the server.
@@ -189,8 +198,7 @@ docker run -p 7777:7777 --name tmodloader --rm \
   -v /path/to/data:/data
   -e TMOD_SHUTDOWN_MESSAGE='Goodbye!' \
   -e TMOD_AUTOSAVE_INTERVAL='15' \
-  -e TMOD_AUTODOWNLOAD='2824688072,2824688266' \
-  -e TMOD_ENABLEDMODS='2824688072,2824688266' \
+  -e TMOD_MOD_COLLECTION='https://steamcommunity.com/sharedfiles/filedetails/?id=3732144707' \
   -e TMOD_MOTD='Welcome to my tModLoader Server!' \
   -e TMOD_PASS='secret' \
   -e TMOD_MAXPLAYERS='16' \
