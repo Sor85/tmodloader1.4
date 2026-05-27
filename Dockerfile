@@ -15,7 +15,7 @@ FROM ubuntu:latest
 
 
 # The TMOD Version. Ensure that you follow the correct format. Version releases can be found at https://github.com/tModLoader/tModLoader/releases if you're lost.
-ARG TMOD_VERSION=v2026.04.2.2
+ARG TMOD_VERSION=v2026.03.3.0
 
 # Sends update messages to the console before launch.
 ENV UPDATE_NOTICE="true"
@@ -29,6 +29,9 @@ ENV TMOD_AUTOSAVE_INTERVAL="10"
 # Mods which should be downloaded from Steam upon starting the server.
 # Example format: 2824688072,2824688266,2835214226
 ENV TMOD_AUTODOWNLOAD=""
+
+# A Steam Workshop collection URL or ID. When set, this downloads and enables every mod in the collection.
+ENV TMOD_MOD_COLLECTION=""
 
 # The mods we want to enable on the server on startup. Any omitted mods will not be loaded.
 # Example format: 2824688072,2824688266,2835214226
@@ -136,6 +139,7 @@ RUN unzip -o tModLoader.zip \
 
 COPY DotNetInstall.sh ./LaunchUtils
 COPY entrypoint.sh .
+COPY entrypoint-functions.sh .
 COPY inject.sh /usr/local/bin/inject
 COPY autosave.sh .
 COPY prepare-config.sh .
@@ -143,6 +147,7 @@ COPY prepare-config.sh .
 RUN chmod 755 ./LaunchUtils/DotNetInstall.sh \
     && chmod 755 ./LaunchUtils/ScriptCaller.sh \
     && chmod 755 ./entrypoint.sh \
+    && chmod 755 ./entrypoint-functions.sh \
     && chmod 755 ./autosave.sh \
     && chmod 755 /usr/local/bin/inject \
     && chmod 755 ./prepare-config.sh \

@@ -1,11 +1,15 @@
 #!/bin/bash
 
+source ./entrypoint-functions.sh
+
 pipe=/tmp/tmod.pipe
 
 echo -e "[SYSTEM] Shutdown Message set to: $TMOD_SHUTDOWN_MESSAGE"
 echo -e "[SYSTEM] Save Interval set to: $TMOD_AUTOSAVE_INTERVAL minutes"
 
 configPath=/terraria-server/serverconfig.txt
+workshopContentPath=/data/steamMods/steamapps/workshop/content/1281930
+modUpdateStatePath=/data/steamMods/tmodloader-workshop-updates.state
 
 # Check Config
 if [[ "$TMOD_USECONFIGFILE" == "Yes" ]]; then
@@ -19,6 +23,8 @@ if [[ "$TMOD_USECONFIGFILE" == "Yes" ]]; then
 else
   ./prepare-config.sh
 fi
+
+set_mod_sources
 
 # Trapped Shutdown, to cleanly shutdown
 function shutdown () {
@@ -39,10 +45,21 @@ if test -z "${TMOD_AUTODOWNLOAD}" ; then
     echo -e "[SYSTEM] For more information, please see the Github README."
     sleep 5s
 else
-    echo -e "[SYSTEM] Downloading Mods specified in the TMOD_AUTODOWNLOAD Environment Variable. This may hand a while depending on the number of mods..."
-    # Convert the Comma Separated list of Mod IDs to a list of SteamCMD commands and call SteamCMD to download them all.
-    steamcmd +force_install_dir /data/steamMods +login anonymous +workshop_download_item 1281930 `echo -e $TMOD_AUTODOWNLOAD | sed 's/,/ +workshop_download_item 1281930 /g'` +quit
-    echo -e "[SYSTEM] Finished downloading mods."
+    modsToDownload=$(filter_download_mod_ids "$TMOD_AUTODOWNLOAD" "$modUpdateStatePath" "$workshopContentPath")
+
+    if test -z "$modsToDownload" ; then
+      echo -e "[SYSTEM] All specified mods are already up to date. Skipping SteamCMD download."
+    else
+      echo -e "[SYSTEM] Downloading missing or updated Mods specified in the TMOD_AUTODOWNLOAD Environment Variable. This may hand a while depending on the number of mods..."
+      # Convert the Comma Separated list of Mod IDs to a list of SteamCMD commands and call SteamCMD to download them all.
+      steamcmd +force_install_dir /data/steamMods +login anonymous +workshop_download_item 1281930 `echo -e $modsToDownload | sed 's/,/ +workshop_download_item 1281930 /g'` +quit
+      if [ $? -eq 0 ]; then
+        write_mod_update_state "$TMOD_AUTODOWNLOAD" "$modUpdateStatePath"
+        echo -e "[SYSTEM] Finished downloading mods."
+      else
+        echo -e "[!!] An error occurred while attempting to download mods."
+      fi
+    fi
 fi
 
 # Enable Mods
@@ -53,7 +70,7 @@ if test -z "${TMOD_ENABLEDMODS}" ; then
     sleep 5s
 else
   enabledpath=/data/tModLoader/Mods/enabled.json
-  modpath=/data/steamMods/steamapps/workshop/content/1281930
+  modpath=$workshopContentPath
   rm -f $enabledpath
   mkdir -p /data/tModLoader/Mods
   touch $enabledpath
