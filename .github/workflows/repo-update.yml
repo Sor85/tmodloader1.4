@@ -3,13 +3,15 @@ on:
   pull_request:
     types:
       - closed
+permissions:
+  contents: write
 jobs:
   if_merged:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v5
       with:
         path: ./
     - name: Get Current Version
@@ -34,7 +36,7 @@ jobs:
       run: docker push ${{ secrets.DOCKER_USER }}/tmodloader1.4:${{ env.REPO_VERSION }}
     - name: Push Image to DockerHub as Latest
       run: docker push ${{ secrets.DOCKER_USER }}/tmodloader1.4:latest
-    - uses: stefanzweifel/git-auto-commit-action@v4
+    - uses: stefanzweifel/git-auto-commit-action@v7
       if: ${{ env.CURRENT_VERSION != env.REPO_VERSION }}
       with:
         commit_message: "Github Action: Updating to tModLoader version ${{ env.REPO_VERSION }}"
